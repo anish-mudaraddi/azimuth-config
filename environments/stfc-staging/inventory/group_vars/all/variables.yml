@@ -1,0 +1,12 @@
+#############################################################################
+# Configuration for the HA cluster
+
+capi_cluster_addons_ingress_load_balancer_ip: "130.246.x.x"
+zenith_sshd_service_load_balancer_ip: "130.246.x.x"
+
+#############################################################################
+# Ingress configuration
+
+# The base domain to use for ingress resources
+ingress_base_domain: "apps.staging-cape.stfc.ac.uk"
+ingress_tls_enabled: true

@@ -1,1 +1,114 @@
 # common variables for all stfc environments - stfc-development, stfc-production, stfc-staging 
+
+#############################################################################
+# Images configuration
+
+community_images_custom_properties:
+  - "hw_scsi_model=virtio-scsi"
+  - "hw_disk_bus=scsi"
+
+# Upload images as private
+# CaaS/Kubernetes will only work within the tenancy in which Azimuth is deployed
+community_images_default_visibility: private
+# However don't assume we are in control of the images, e.g. if there is another
+# Azimuth deployment on the same cloud
+community_images_update_existing_visibility: false
+
+#############################################################################
+# Ansible Playbooks For STFC Security Compliance 
+
+# Define common variables to be reused
+stfc_compliance_extra_vars:
+  ansible_init_collections:
+    - name: https://github.com/stfc/cloud-image-builders.git
+      version: "3b0e9b3" # merge into main?
+      type: git
+  ansible_init_playbooks:
+    - name: azimuth.security.run_vm_baseline
+
+# Workstation configuration
+azimuth_caas_stackhpc_workstation_extra_vars_overrides: "{{ stfc_compliance_extra_vars }}"
+
+# RStudio configuration
+azimuth_caas_stackhpc_rstudio_extra_vars_overrides: "{{ stfc_compliance_extra_vars }}"
+
+# Repo2Docker configuration
+azimuth_caas_stackhpc_repo2docker_extra_vars_overrides: "{{ stfc_compliance_extra_vars }}"
+
+#############################################################################
+# Configuration for the seed node (HA) or single node
+
+# The CIDR of the subnet that should be created
+infra_network_cidr: 192.168.100.0/24
+# The ID of the external network to connect to via a router
+infra_external_network_id: "5283f642-8bd8-48b6-8608-fa3006ff4539"
+
+# The id of the flavor to use for the node
+# For a seed node for an HA cluster, 8GB RAM is fine (maybe even 4GB)
+# For a single node deployment, >= 16GB RAM is recommended
+infra_flavor_id: "f120e108-7883-4933-bb76-4f88909447f6"  # l6.c4 (4 vCPU, ~15GB RAM, 75GB disk)
+
+# The size in GB for the data volume
+# This will hold all cluster data, including Kubernetes resources, and also PVC data
+infra_data_volume_size: 100
+
+# use a pre-existing STFC Cloud image rather than a community one
+# allows us to keep all existing cloud-init security configuration  
+infra_image_id: 11c31306-9a04-4900-8208-224d3c217017 # ubuntu-jammy-22.04-nogui
+
+#############################################################################
+# Configuration for Azimuth Cluster Operator
+
+azimuth_capi_operator_capi_helm_chart_repo: https://stfc.github.io/cloud-helm-charts/
+azimuth_capi_operator_capi_helm_chart_name: stfc-cloud-openstack-cluster
+azimuth_capi_operator_capi_helm_chart_version: 1.4.0
+
+# Default values for the CAPI Helm chart releases for all clusters
+azimuth_capi_operator_capi_helm_values: >-
+  {{-
+    {"openstack-cluster" : azimuth_capi_operator_capi_helm_values_defaults} |
+    combine({"openstack-cluster": azimuth_capi_operator_capi_helm_values_overrides}, recursive = True)
+  }}
+
+azimuth_capi_operator_capi_helm_openstack_loadbalancer_provider: amphora
+azimuth_capi_operator_capi_helm_csi_cinder_default_availability_zone: ceph
+
+azimuth_capi_operator_capi_helm_control_plane_omit_failure_domain: true
+azimuth_capi_operator_capi_helm_worker_failure_domain: null
+
+#############################################################################
+# Azimuth configuration
+
+# Indicates if the Zenith app proxy should be enabled
+azimuth_apps_enabled: yes
+# Indicates if Kubernetes support should be enabled
+azimuth_kubernetes_enabled: yes
+# Indicates if Cluster-as-a-Service (CaaS) should be enabled
+azimuth_clusters_enabled: yes
+
+# The name of the current cloud
+azimuth_current_cloud_name: stfc-cloud
+# The label for the current cloud
+azimuth_current_cloud_label: STFC Cloud
+
+#############################################################################
+# Configuration of authenticators / authentication methods
+
+# Use the STFC domain for now
+azimuth_openstack_domain: stfc
+
+azimuth_openstack_auth_url: https://openstack.stfc.ac.uk:5000/v3
+
+# Whether the password authenticator should be enabled (enabled by default)
+azimuth_authenticator_password_enabled: true
+# The label for the password authenticator
+azimuth_authenticator_password_label: "Username + Password"
+
+# Whether the appcred authenticator should be enabled (not enabled by default)
+azimuth_authenticator_appcred_enabled: false
+# The label for the appcred authenticator
+azimuth_authenticator_appcred_label: "Application Credential"
+
+azimuth_authenticator_federated_enabled: yes
+azimuth_authenticator_federated_provider: "openid"
+azimuth_authenticator_federated_protocol: "openid"
